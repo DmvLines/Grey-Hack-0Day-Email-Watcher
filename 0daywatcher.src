@@ -1,0 +1,112 @@
+path = current_path()
+terminalBin = "/usr/bin/Terminal.exe"
+emailScript = path + "/0dayemail"
+
+get_terminal_pids = function(hostComputer)
+    procs = hostComputer.show_procs
+    lines = procs.split(char(10))[1:]
+
+    pids = []
+    for item in lines
+        if item == "" then 
+            continue 
+        end if
+
+        cols = item.split(" ")
+        if cols.len < 5 then 
+            continue 
+        end if
+
+        command = cols[4]
+        if command == "Terminal" then
+            pidStr = cols[1]
+            if pidStr == "" then 
+                continue 
+            end if
+            pids.push(pidStr.to_int)
+        end if
+    end for
+
+    return pids
+end function
+
+// Terminal count
+count_terminals = function(hostComputer)
+    return get_terminal_pids(hostComputer).len
+end function
+
+// Close terminals beyond baseline
+close_extra_terminal = function(hostComputer, baselinePids)
+    currentPids = get_terminal_pids(hostComputer)
+
+    extraPid = -1
+
+    for pid in currentPids
+        isBaseline = 0
+
+        // check if this pid is one of the original terminals
+        for b in baselinePids
+            if pid == b then
+                isBaseline = 1
+                break
+            end if
+        end for
+
+        // if it's not baseline, extra terminal found
+        if isBaseline == 0 then
+            extraPid = pid
+            break
+        end if
+    end for
+
+    if extraPid == -1 then
+        print("No extra Terminal to close.")
+        return
+    end if
+
+    closeResult = hostComputer.close_program(extraPid)
+    if typeof(closeResult) == "string" then
+        print("Error closing Terminal PID " + extraPid + ": " + closeResult)
+    else
+        print("Email Terminal PID " + extraPid + " closed.")
+    end if
+end function
+
+main = function()
+    shell = get_shell()
+    if typeof(shell) == "string" then
+        print("Error getting shell: " + shell)
+        return
+    end if
+
+    hostComputer = shell.host_computer
+
+    // Baseline: all Terminals that exist when watcher starts
+    baselinePids = get_terminal_pids(hostComputer)
+    baseline = baselinePids.len
+    extra_target = baseline + 1 // need one extra terminal (broken logic otherwise)
+
+    print("Baseline terminals: " + baseline)
+    print("Watcher running. Press 'c' to close the email terminal, Enter to continue.")
+
+    while true
+        current = count_terminals(hostComputer)
+
+        // If there isn't an extra terminal, launch one
+        if current < extra_target then
+            print("No extra 0dayemail terminal; launching new one...")
+            launch(shell, terminalBin, emailScript)
+        end if
+
+        // Keypress to close extra terminal
+        key = user_input("Press 'c' to close email terminal: ", false, true)
+
+        if key == char(99) then
+            close_extra_terminal(hostComputer, baselinePids)
+        end if
+
+        wait(0.5)
+    end while
+end function
+
+main()

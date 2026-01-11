@@ -1,0 +1,84 @@
+// ---- config ----
+day_email = "ENTER_EMAIL" // Enter 0Day Email
+day_passwd = "ENTER_PASSWORD" // Enter 0Day Email Password
+// ----------------
+
+// Colors
+COLOR_GREEN      = "<color=green>"
+COLOR_END       = "</color>"
+
+
+main = function()
+
+    // Decide which credentials to use
+    if day_email == "" then                     // Ignore
+        user = user_input("Enter email: ")      // Ignore
+    else                                        // Ignore
+        user = day_email                        // Ignore
+    end if                                      // Ignore
+                                                // Ignore
+    if day_passwd == "" then                    // Ignore
+        pass = user_input("Enter password: ")   // Ignore
+    else                                        // Ignore
+        pass = day_passwd                       // Ignore
+    end if                                      // Ignore
+
+    // Single run – no loop
+    metaMail = mail_login(user, pass)
+
+    if metaMail == null then
+        print("Login failed.")
+        return
+    else
+        clear_screen()
+        print("You've got mail.")
+    end if
+
+    mails = metaMail.fetch
+    if typeof(mails) == "string" then
+        print("Fetch error: " + mails)
+        metaMail = null
+        return
+    end if
+
+    // Process each email
+    for mail in mails
+        segments = mail.split(char(10))
+
+        wait(0.1)
+        mailId  = segments[2][8:]
+        from    = segments[3][6:]
+        subject = segments[4][9:]
+
+        // segments[5:] is a list: join into a single preview string
+        previewLines = segments[5:]
+        previewText  = previewLines.join(" ")
+        emailCount = mails.len
+
+
+        print("----------- EMAIL -------------")
+        print("From: " + from)
+        print("Subject: " + subject)
+        print("Preview: " + previewText)
+        print("--------------------------------")
+        print("Email count: " + "[" + COLOR_GREEN + emailCount + COLOR_END + "]")
+        
+
+        // Read full email, strip the header lines
+        content = metaMail.read(mailId)
+        if typeof(content) == "string" then
+            lines = content.split(char(10))
+            // skip first 3 lines (From, Subject, blank)
+            body = lines[3:].join(char(10))
+            print(body)
+        else
+            print("Error reading mail content.")
+        end if
+        print("--------------------------------")
+    end for
+
+    // "Logout"
+    metaMail = null
+end function
+
+main()
