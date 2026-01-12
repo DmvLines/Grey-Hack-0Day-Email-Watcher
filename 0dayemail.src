@@ -4,7 +4,7 @@ day_passwd = "ENTER_PASSWORD" // Enter 0Day Email Password
 // ----------------
 
 // Colors
-COLOR_GREEN      = "<color=green>"
+COLOR_GREEN     = "<color=#00FF00>"
 COLOR_END       = "</color>"
 
 
@@ -70,7 +70,17 @@ main = function()
             lines = content.split(char(10))
             // skip first 3 lines (From, Subject, blank)
             body = lines[3:].join(char(10))
-            print(body)
+            lines = body.split(char(10))
+
+            for line in lines
+                if slice(line, 0, 5) == "User:" then
+                    print(COLOR_GREEN + "User: " + line[5:] + COLOR_END)
+                else if slice(line, 0, 9) == "Password:" then
+                    print(COLOR_GREEN + "Password: " + line[9:] + COLOR_END)
+                else
+                    print(line)
+                end if
+            end for
         else
             print("Error reading mail content.")
         end if
