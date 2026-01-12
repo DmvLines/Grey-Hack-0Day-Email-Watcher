@@ -1,38 +1,66 @@
+// ======================= 0Day Email Reader =======================
+//  - Created by Dmv
+// ================================================================
+
 // ---- config ----
-day_email = "ENTER_EMAIL" // Enter 0Day Email
-day_passwd = "ENTER_PASSWORD" // Enter 0Day Email Password
+day_email  = "dmv@wehatapeb.info"      // Enter 0Day Email
+day_passwd = "DElqRTw2IzVroUE"   // Enter 0Day Email Password
 // ----------------
 
 // Colors
-COLOR_GREEN     = "<color=#00FF00>"
-COLOR_END       = "</color>"
-
+COLOR_GREEN = "<color=#00FF00>"
+COLOR_END   = "</color>"
 
 main = function()
+    // ---------- helpers ----------
+    s = function(x)
+        if x == null then 
+            return "" 
+        end if
+        return "" + x
+    end function
+
+    starts_with = function(text, prefix)
+        text = s(text)
+        prefix = s(prefix)
+        if text.len < prefix.len then 
+            return 0 
+        end if
+        return slice(text, 0, prefix.len) == prefix
+    end function
+
+    strip_quote_prefix = function(line)
+        line = s(line)
+        if starts_with(line, "> ") then
+            return slice(line, 2, line.len)
+        else if starts_with(line, ">") then
+            return slice(line, 1, line.len)
+        end if
+        return line
+    end function
+    // -----------------------------
 
     // Decide which credentials to use
-    if day_email == "" then                     // Ignore
-        user = user_input("Enter email: ")      // Ignore
-    else                                        // Ignore
-        user = day_email                        // Ignore
-    end if                                      // Ignore
-                                                // Ignore
-    if day_passwd == "" then                    // Ignore
-        pass = user_input("Enter password: ")   // Ignore
-    else                                        // Ignore
-        pass = day_passwd                       // Ignore
-    end if                                      // Ignore
+    if day_email == "" then
+        user = user_input("Enter email: ")
+    else
+        user = day_email
+    end if
 
-    // Single run – no loop
+    if day_passwd == "" then
+        pass = user_input("Enter password: ")
+    else
+        pass = day_passwd
+    end if
+
     metaMail = mail_login(user, pass)
-
     if metaMail == null then
         print("Login failed.")
         return
-    else
-        clear_screen()
-        print("You've got mail.")
     end if
+
+    clear_screen()
+    print("You've got mail.")
 
     mails = metaMail.fetch
     if typeof(mails) == "string" then
@@ -41,53 +69,86 @@ main = function()
         return
     end if
 
-    // Process each email
-    for mail in mails
+    total = mails.len
+
+    // Oldest -> newest (newest ends up at bottom)
+    i = total - 1
+    while i >= 0
+        mail = mails[i]
         segments = mail.split(char(10))
 
         wait(0.1)
+
+        if segments == null or segments.len < 5 then
+            print("------------------------")
+            print("Malformed email entry.")
+            print("------------------------")
+            i = i - 1
+            continue
+        end if
+
         mailId  = segments[2][8:]
         from    = segments[3][6:]
         subject = segments[4][9:]
 
-        // segments[5:] is a list: join into a single preview string
-        previewLines = segments[5:]
-        previewText  = previewLines.join(" ")
-        emailCount = mails.len
+        // Email number (oldest->newest)
+        num = (total - i)
 
-
-        print("----------- EMAIL -------------")
+        print("------------------------")
+        print("Email: [" + COLOR_GREEN + num + COLOR_END + "/" + COLOR_GREEN + total + COLOR_END + "]")
         print("From: " + from)
         print("Subject: " + subject)
-        print("Preview: " + previewText)
-        print("--------------------------------")
-        print("Email count: " + "[" + COLOR_GREEN + emailCount + COLOR_END + "]")
-        
+        print("Preview:")
+        print("")
 
-        // Read full email, strip the header lines
+        // Read full email
         content = metaMail.read(mailId)
         if typeof(content) == "string" then
-            lines = content.split(char(10))
-            // skip first 3 lines (From, Subject, blank)
-            body = lines[3:].join(char(10))
-            lines = body.split(char(10))
+            rawLines = content.split(char(10))
 
-            for line in lines
-                if slice(line, 0, 5) == "User:" then
-                    print(COLOR_GREEN + "User: " + line[5:] + COLOR_END)
-                else if slice(line, 0, 9) == "Password:" then
-                    print(COLOR_GREEN + "Password: " + line[9:] + COLOR_END)
-                else
-                    print(line)
+            // If there aren't enough lines, just print whatever exists
+            if rawLines == null or rawLines.len < 4 then
+                print("(empty)")
+            else
+                body = rawLines[3:].join(char(10))
+                bodyLines = body.split(char(10))
+
+                anyPrinted = 0
+
+                for line in bodyLines
+                    clean = strip_quote_prefix(line)
+
+                    if anyPrinted == 0 and clean == "" then
+                        continue
+                    end if
+
+                    if starts_with(clean, "User:") then
+                        print(COLOR_GREEN + "User:" + clean[5:] + COLOR_END)
+                        anyPrinted = 1
+                    else if starts_with(clean, "Password:") then
+                        print(COLOR_GREEN + "Password:" + clean[9:] + COLOR_END)
+                        anyPrinted = 1
+                    else
+                        print(COLOR_END + clean)
+                        if clean != "" then 
+                            anyPrinted = 1 
+                        end if
+                    end if
+                end for
+
+                if anyPrinted == 0 then
+                    print("(empty)")
                 end if
-            end for
+            end if
         else
             print("Error reading mail content.")
         end if
-        print("--------------------------------")
-    end for
 
-    // "Logout"
+        print("------------------------")
+
+        i = i - 1
+    end while
+
     metaMail = null
 end function
 
