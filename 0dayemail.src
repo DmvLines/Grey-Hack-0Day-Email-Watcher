@@ -3,8 +3,8 @@
 // ================================================================
 
 // ---- config ----
-day_email  = "dmv@wehatapeb.info"      // Enter 0Day Email
-day_passwd = "DElqRTw2IzVroUE"   // Enter 0Day Email Password
+day_email  = "ENTER_EMAIL"      // Enter 0Day Email
+day_passwd = "ENTER_PASSWORD"   // Enter 0Day Email Password
 // ----------------
 
 // Colors
